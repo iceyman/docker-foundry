@@ -59,11 +59,11 @@ echo " "
 echo "Checking if CUSTOM_CONFIG env is set and if set to true:"
 if [ ! -z $CUSTOM_CONFIG ]; then
     if [ $CUSTOM_CONFIG = true ];then
-	    echo "Not changing app.cfg file"
-	else
-	    echo "Running setup script for the app.cfg file"
+            echo "Not changing app.cfg file"
+        else
+            echo "Running setup script for the app.cfg file"
             source ./scripts/env2cfg.sh
-	fi
+        fi
     
 else
     echo "Running setup script for the app.cfg file"
@@ -93,7 +93,16 @@ if [ -f /tmp/.X0-lock ] || [ -d /tmp/ ]; then
         rm /tmp/.X0-lock > /dev/null 2>&1
     fi
     if [ -d /tmp/ ]; then
-        rm -r /tmp/* > /dev/null 2>&1
+        # FIX (iceyman fork): the original "rm -r /tmp/*" here could hang
+        # indefinitely — confirmed via a real deploy — if /tmp contains
+        # any item this user doesn't own or can't access (this image
+        # ships a root-owned /tmp/dumps directory, and the non-root
+        # foundry user hitting it during cleanup would hang forever
+        # rather than fail cleanly). Using find with -writable only
+        # touches items this user genuinely has permission to remove,
+        # silently skipping anything it can't — same best-effort intent
+        # as the original, without the hang risk.
+        find /tmp -mindepth 1 -maxdepth 1 -writable -exec rm -rf {} + > /dev/null 2>&1
     fi
 fi
 
