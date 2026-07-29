@@ -1,0 +1,37 @@
+name: Build and Push (Foundry, forked from luxusburg)
+
+# Pushes to GitHub Container Registry (ghcr.io) instead of Docker Hub —
+# free, unlimited, and uses GitHub's own built-in token, so there are
+# no separate secrets to set up at all. Builds from luxusburg's own
+# Dockerfile unmodified, as required by GPL-3.0.
+"on":
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch: {}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # required to push to ghcr.io
+    steps:
+      - name: Check out this fork
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/leviathan-foundry:latest
+          no-cache: true
